@@ -1,23 +1,40 @@
-version: '3'
+version: '3.3'
 services:
-    web:
-      image: 'gitlab/gitlab-ce'
-      restart: always
-      container_name: gitlab
-      hostname: '182.92.208.97' 
-      privileged: true 
-      environment:
-        TZ: Europe/Guernsey
-        GITLAB_OMNIBUS_CONFIG: |
-          external_url 'http://182.92.208.98' 
-          gitlab_rails['gitlab_shell_ssh_port'] = 2222 
-          unicorn['port'] = 8888  
-          nginx['listen_port'] = 80 
-      ports:  
-        - '80:80'
-        - '8443:443' 
-        - '2222:22' 
-      volumes:
-        - /usr/local/docker/gitlab/config:/etc/gitlab
-        - /usr/local/docker/gitlab/data:/var/opt/gitlab
-        - /usr/local/docker/gitlab/logs:/var/log/gitlab
+  gitlab:
+    image: gitlab/gitlab-ce:${GITLAB_TAG}
+    restart: always
+    hostname: ${GITLAB_HOSTNAME}
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://${GITLAB_HOSTNAME}'
+    ports:
+    - '80:80'
+    - '443:443'
+    - '22:22'
+    networks: 
+      intranet:
+        aliases: 
+        - ${GITLAB_HOSTNAME}
+    volumes:
+    - './config:/etc/gitlab'
+    - './logs:/var/log/gitlab'
+    - './data:/var/opt/gitlab'
+  gitlab-runner:
+    image: gitlab/gitlab-runner:${RUNNER_TAG}
+    restart: always
+    depends_on: 
+    - gitlab
+    - builder
+    networks: 
+      intranet:
+    volumes: 
+    - './runner-config:/etc/gitlab-runner'
+    - '//var/run/docker.sock:/var/run/docker.sock'
+  builder:
+    build: ./build-container
+    restart: "no"
+    command: "echo Built!"
+networks: 
+  intranet:
+    driver: bridge
+    name: ${NETWORK_NAME}
